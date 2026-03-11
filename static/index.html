@@ -1231,6 +1231,12 @@
   <script>
     let currentRole = null;
     let todayMinutes = 0;
+    let teacherRefreshInterval = null;
+
+    function getLocalDate() {
+      const d = new Date();
+      return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    }
 
     // ════ AUTH ════
 
@@ -1293,13 +1299,19 @@
       document.getElementById('login-page').style.display = 'none';
       document.getElementById('main-app').style.display = 'block';
 
-      const today = new Date().toISOString().split('T')[0];
+      const today = getLocalDate();
 
       if (role === 'teacher') {
         document.getElementById('teacher-panel').classList.remove('hidden');
         document.getElementById('report-date').value = today;
         document.getElementById('weekly-report-date').value = today;
         loadTeacherReport();
+        // Her 30 saniyede aktif sekmeyi yenile
+        teacherRefreshInterval = setInterval(() => {
+          if (currentTeacherTab === 'daily') loadTeacherReport();
+          else if (currentTeacherTab === 'weekly') loadWeeklyReport();
+          else if (currentTeacherTab === 'leaderboard') loadLeaderboard();
+        }, 30000);
       } else {
         document.getElementById('student-panel').classList.remove('hidden');
         document.getElementById('add-date').value = today;
@@ -1484,6 +1496,7 @@
       document.getElementById('tab-weekly').classList.toggle('hidden', tab !== 'weekly');
       document.getElementById('tab-leaderboard').classList.toggle('hidden', tab !== 'leaderboard');
 
+      if (tab === 'daily') loadTeacherReport();
       if (tab === 'weekly') loadWeeklyReport();
       if (tab === 'leaderboard') loadLeaderboard();
     }

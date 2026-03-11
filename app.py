@@ -5,6 +5,17 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 from database import init_db, get_connection, _fetchone, _fetchall, _exec, commit, close
 from datetime import datetime, date, timedelta
+from zoneinfo import ZoneInfo
+
+TZ = ZoneInfo("Europe/Istanbul")
+
+def _today():
+    """Türkiye saatiyle bugünün tarihi."""
+    return datetime.now(TZ).date()
+
+def _now_iso():
+    """Türkiye saatiyle şu anki zaman (ISO format)."""
+    return datetime.now(TZ).isoformat()
 
 # ─── ENV & CONFIG ─────────────────────────────────────────────────────────────
 
@@ -54,7 +65,7 @@ def _validate_password(val):
 
 def _validate_date(val):
     if not val:
-        return str(date.today()), None
+        return str(_today()), None
     if not _DATE_RE.match(val):
         return None, "Geçersiz tarih formatı (YYYY-MM-DD)"
     try:
@@ -207,7 +218,7 @@ def add_session():
     if err:
         return jsonify({"error": err}), 400
 
-    now = datetime.now().isoformat()
+    now = _now_iso()
     conn = get_connection()
 
     _exec(conn,
@@ -246,7 +257,7 @@ def add_news():
     if err:
         return jsonify({"error": err}), 400
 
-    now = datetime.now().isoformat()
+    now = _now_iso()
     conn = get_connection()
 
     _exec(conn,
@@ -290,7 +301,7 @@ def my_stats():
         (user_id,)
     )
 
-    today = str(date.today())
+    today = str(_today())
     today_summary = _fetchone(conn,
         "SELECT * FROM daily_summaries WHERE student_id = ? AND date = ?",
         (user_id, today)
@@ -322,7 +333,7 @@ def teacher_report():
     if err:
         return err
 
-    raw_date = request.args.get("date", str(date.today()))
+    raw_date = request.args.get("date", str(_today()))
     target_date, err = _validate_date(raw_date)
     if err:
         return jsonify({"error": err}), 400
@@ -381,7 +392,7 @@ def student_news():
     if not student_id or not student_id.isdigit():
         return jsonify({"error": "Geçersiz öğrenci ID"}), 400
 
-    raw_date = request.args.get("date", str(date.today()))
+    raw_date = request.args.get("date", str(_today()))
     target_date, err = _validate_date(raw_date)
     if err:
         return jsonify({"error": err}), 400
@@ -404,7 +415,7 @@ def teacher_weekly_report():
     if err:
         return err
 
-    raw_date = request.args.get("date", str(date.today()))
+    raw_date = request.args.get("date", str(_today()))
     target_date, err = _validate_date(raw_date)
     if err:
         return jsonify({"error": err}), 400
@@ -524,7 +535,7 @@ def my_weekly_stats():
     if err:
         return err
 
-    today = date.today()
+    today = _today()
     week_start = today - timedelta(days=today.weekday())
     week_end = week_start + timedelta(days=6)
 
