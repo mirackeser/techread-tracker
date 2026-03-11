@@ -1050,6 +1050,21 @@
             </div>
           </div>
 
+          <!-- Şifre Değiştir -->
+          <div class="card form-card" style="margin-top:1.5rem;">
+            <div class="card-title">🔒 Şifre Değiştir</div>
+            <div class="form-group">
+              <label>Mevcut Şifre</label>
+              <input type="password" id="old-pass" placeholder="••••••••" />
+            </div>
+            <div class="form-group">
+              <label>Yeni Şifre</label>
+              <input type="password" id="new-pass" placeholder="En az 6 karakter" />
+            </div>
+            <button class="btn-action btn-green" onclick="changePassword()" style="width:100%">🔒 Şifreyi Değiştir</button>
+            <div class="form-feedback" id="pass-feedback"></div>
+          </div>
+
         </div>
 
         <!-- ─── HOCA PANELİ ─── -->
@@ -1062,13 +1077,16 @@
           <!-- SEKMELER -->
           <div class="teacher-tabs">
             <button class="teacher-tab-btn active" onclick="switchTeacherTab('daily')">
-              <span class="tab-icon">📋</span>Günlük Takip
+              <span class="tab-icon">📋</span>Günlük
             </button>
             <button class="teacher-tab-btn" onclick="switchTeacherTab('weekly')">
-              <span class="tab-icon">📅</span>Haftalık Takip
+              <span class="tab-icon">📅</span>Haftalık
             </button>
             <button class="teacher-tab-btn" onclick="switchTeacherTab('leaderboard')">
-              <span class="tab-icon">🏆</span>Toplam Puan
+              <span class="tab-icon">🏆</span>Puan
+            </button>
+            <button class="teacher-tab-btn" onclick="switchTeacherTab('manage')">
+              <span class="tab-icon">⚙️</span>Yönet
             </button>
           </div>
 
@@ -1078,9 +1096,12 @@
               <div>
                 <div style="font-size:1.4rem;font-weight:600;">Günlük Takip</div>
               </div>
-              <div class="date-picker-group">
-                <label>Tarih</label>
-                <input type="date" id="report-date" onchange="loadTeacherReport()" />
+              <div style="display:flex;align-items:center;gap:0.8rem;">
+                <div class="date-picker-group">
+                  <label>Tarih</label>
+                  <input type="date" id="report-date" onchange="loadTeacherReport()" />
+                </div>
+                <button class="btn-sm" onclick="exportCSV('daily')" title="CSV İndir">📥 CSV</button>
               </div>
             </div>
 
@@ -1128,9 +1149,12 @@
                 <div style="font-size:1.4rem;font-weight:600;">Haftalık Takip</div>
                 <div id="week-range-label" style="font-size:0.85rem;color:var(--muted);margin-top:0.3rem;"></div>
               </div>
-              <div class="date-picker-group">
-                <label>Hafta Seç</label>
-                <input type="date" id="weekly-report-date" onchange="loadWeeklyReport()" />
+              <div style="display:flex;align-items:center;gap:0.8rem;">
+                <div class="date-picker-group">
+                  <label>Hafta Seç</label>
+                  <input type="date" id="weekly-report-date" onchange="loadWeeklyReport()" />
+                </div>
+                <button class="btn-sm" onclick="exportCSV('weekly')" title="CSV İndir">📥 CSV</button>
               </div>
             </div>
 
@@ -1175,6 +1199,7 @@
                 <div style="font-size:1.4rem;font-weight:600;">🏆 Toplam Puan Sıralaması</div>
                 <div style="font-size:0.85rem;color:var(--muted);margin-top:0.3rem;">Tüm zamanlar</div>
               </div>
+              <button class="btn-sm" onclick="exportCSV('leaderboard')" title="CSV İndir">📥 CSV</button>
             </div>
 
             <div class="summary-chips">
@@ -1211,6 +1236,32 @@
             </div>
           </div>
 
+          <!-- ══ ÖĞRENCİ YÖNETİMİ ══ -->
+          <div id="tab-manage" class="hidden">
+            <div class="teacher-header">
+              <div>
+                <div style="font-size:1.4rem;font-weight:600;">⚙️ Öğrenci Yönetimi</div>
+                <div style="font-size:0.85rem;color:var(--muted);margin-top:0.3rem;">Sil, şifre sıfırla, puan güncelle</div>
+              </div>
+            </div>
+
+            <div class="card" style="padding:0;overflow:hidden;">
+              <table class="student-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Öğrenci</th>
+                    <th>Baz Puan</th>
+                    <th>İşlemler</th>
+                  </tr>
+                </thead>
+                <tbody id="manage-table-body">
+                  <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:2rem;">Yükleniyor...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
         </div>
 
       </div>
@@ -1225,6 +1276,15 @@
       <div id="modal-news-list">
         <div style="color:var(--muted);font-size:0.85rem;padding:1rem 0;">Yükleniyor...</div>
       </div>
+    </div>
+  </div>
+
+  <!-- Student Management Modal -->
+  <div class="modal-overlay" id="manage-modal">
+    <div class="modal-box">
+      <button class="modal-close" onclick="closeManageModal()">✕</button>
+      <div class="modal-title" id="manage-modal-title">Öğrenci Yönetimi</div>
+      <div id="manage-modal-body"></div>
     </div>
   </div>
 
@@ -1489,16 +1549,18 @@
     function switchTeacherTab(tab) {
       currentTeacherTab = tab;
       document.querySelectorAll('.teacher-tab-btn').forEach((btn, i) => {
-        const tabs = ['daily', 'weekly', 'leaderboard'];
+        const tabs = ['daily', 'weekly', 'leaderboard', 'manage'];
         btn.classList.toggle('active', tabs[i] === tab);
       });
       document.getElementById('tab-daily').classList.toggle('hidden', tab !== 'daily');
       document.getElementById('tab-weekly').classList.toggle('hidden', tab !== 'weekly');
       document.getElementById('tab-leaderboard').classList.toggle('hidden', tab !== 'leaderboard');
+      document.getElementById('tab-manage').classList.toggle('hidden', tab !== 'manage');
 
       if (tab === 'daily') loadTeacherReport();
       if (tab === 'weekly') loadWeeklyReport();
       if (tab === 'leaderboard') loadLeaderboard();
+      if (tab === 'manage') loadManageStudents();
     }
 
     async function loadTeacherReport() {
@@ -1714,6 +1776,174 @@
       const div = document.createElement('div');
       div.textContent = str;
       return div.innerHTML;
+    }
+
+    // ════ ÖĞRENCİ ŞİFRE DEĞİŞTİRME ════
+
+    async function changePassword() {
+      const oldPass = document.getElementById('old-pass').value;
+      const newPass = document.getElementById('new-pass').value;
+      const fb = document.getElementById('pass-feedback');
+
+      if (!oldPass || !newPass) { fb.style.color = 'var(--accent2)'; fb.textContent = 'Tüm alanları doldurun'; return; }
+      if (newPass.length < 6) { fb.style.color = 'var(--accent2)'; fb.textContent = 'Şifre en az 6 karakter olmalı'; return; }
+
+      const res = await fetch('/api/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ old_password: oldPass, new_password: newPass })
+      });
+      const data = await res.json();
+
+      if (!res.ok) { fb.style.color = 'var(--accent2)'; fb.textContent = data.error; return; }
+
+      fb.style.color = 'var(--green)';
+      fb.textContent = '✓ ' + data.message;
+      document.getElementById('old-pass').value = '';
+      document.getElementById('new-pass').value = '';
+      setTimeout(() => { fb.textContent = ''; }, 3000);
+    }
+
+    // ════ CSV EXPORT ════
+
+    function exportCSV(type) {
+      let url = `/api/teacher/export-csv?type=${type}`;
+      if (type === 'daily') {
+        url += `&date=${document.getElementById('report-date').value}`;
+      } else if (type === 'weekly') {
+        url += `&date=${document.getElementById('weekly-report-date').value}`;
+      }
+      window.open(url, '_blank');
+    }
+
+    // ════ ÖĞRENCİ YÖNETİMİ (HOCA) ════
+
+    async function loadManageStudents() {
+      const res = await fetch('/api/teacher/students');
+      if (!res.ok) return;
+      const students = await res.json();
+
+      const tbody = document.getElementById('manage-table-body');
+      if (students.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:2rem;">Henüz öğrenci yok.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = students.map((s, i) => `
+        <tr>
+          <td class="rank-num">${i + 1}</td>
+          <td>
+            <div style="font-weight:600">${escapeHtml(s.name)}</div>
+            <div style="font-size:0.75rem;color:var(--muted);font-family:'Space Mono',monospace">${s.student_no}</div>
+          </td>
+          <td style="font-family:'Space Mono',monospace">${s.base_score}</td>
+          <td>
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+              <button class="btn-sm" onclick="openManageModal('score', ${s.id}, '${escapeHtml(s.name)}', ${s.base_score})" style="color:var(--accent);">✏️ Puan</button>
+              <button class="btn-sm" onclick="openManageModal('password', ${s.id}, '${escapeHtml(s.name)}')" style="color:var(--yellow);">🔑 Şifre</button>
+              <button class="btn-sm" onclick="openManageModal('delete', ${s.id}, '${escapeHtml(s.name)}')" style="color:var(--accent2);">🗑️ Sil</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function openManageModal(action, studentId, studentName, currentScore) {
+      const modal = document.getElementById('manage-modal');
+      const title = document.getElementById('manage-modal-title');
+      const body = document.getElementById('manage-modal-body');
+
+      if (action === 'score') {
+        title.textContent = `${studentName} — Puan Güncelle`;
+        body.innerHTML = `
+          <div class="form-group">
+            <label>Yeni Baz Puan</label>
+            <input type="number" id="modal-score" value="${currentScore}" min="0" max="200" />
+          </div>
+          <button class="btn-action btn-green" onclick="updateScore(${studentId})" style="width:100%;margin-top:0.5rem;">✓ Güncelle</button>
+          <div class="form-feedback" id="modal-feedback"></div>
+        `;
+      } else if (action === 'password') {
+        title.textContent = `${studentName} — Şifre Sıfırla`;
+        body.innerHTML = `
+          <div class="form-group">
+            <label>Yeni Şifre</label>
+            <input type="text" id="modal-password" placeholder="En az 6 karakter" />
+          </div>
+          <button class="btn-action btn-purple" onclick="resetStudentPassword(${studentId})" style="width:100%;margin-top:0.5rem;">🔑 Şifreyi Sıfırla</button>
+          <div class="form-feedback" id="modal-feedback"></div>
+        `;
+      } else if (action === 'delete') {
+        title.textContent = `${studentName} — Sil`;
+        body.innerHTML = `
+          <div style="color:var(--accent2);font-size:0.95rem;margin-bottom:1rem;">Bu öğrenciyi ve tüm verilerini silmek istediğinize emin misiniz?</div>
+          <div style="display:flex;gap:0.8rem;">
+            <button class="btn-action btn-green" onclick="closeManageModal()" style="flex:1;">İptal</button>
+            <button class="btn-action" onclick="deleteStudent(${studentId})" style="flex:1;background:var(--accent2);color:#fff;">🗑️ Evet, Sil</button>
+          </div>
+          <div class="form-feedback" id="modal-feedback"></div>
+        `;
+      }
+
+      modal.classList.add('active');
+    }
+
+    function closeManageModal() {
+      document.getElementById('manage-modal').classList.remove('active');
+    }
+
+    document.getElementById('manage-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeManageModal();
+    });
+
+    async function updateScore(studentId) {
+      const score = document.getElementById('modal-score').value;
+      const fb = document.getElementById('modal-feedback');
+
+      const res = await fetch('/api/teacher/update-score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_id: studentId, base_score: parseFloat(score) })
+      });
+      const data = await res.json();
+
+      if (!res.ok) { fb.style.color = 'var(--accent2)'; fb.textContent = data.error; return; }
+      fb.style.color = 'var(--green)';
+      fb.textContent = '✓ ' + data.message;
+      setTimeout(() => { closeManageModal(); loadManageStudents(); }, 1000);
+    }
+
+    async function resetStudentPassword(studentId) {
+      const pw = document.getElementById('modal-password').value;
+      const fb = document.getElementById('modal-feedback');
+
+      const res = await fetch('/api/teacher/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_id: studentId, new_password: pw })
+      });
+      const data = await res.json();
+
+      if (!res.ok) { fb.style.color = 'var(--accent2)'; fb.textContent = data.error; return; }
+      fb.style.color = 'var(--green)';
+      fb.textContent = '✓ ' + data.message;
+      setTimeout(() => { closeManageModal(); }, 1500);
+    }
+
+    async function deleteStudent(studentId) {
+      const fb = document.getElementById('modal-feedback');
+
+      const res = await fetch('/api/teacher/delete-student', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_id: studentId })
+      });
+      const data = await res.json();
+
+      if (!res.ok) { fb.style.color = 'var(--accent2)'; fb.textContent = data.error; return; }
+      fb.style.color = 'var(--green)';
+      fb.textContent = '✓ ' + data.message;
+      setTimeout(() => { closeManageModal(); loadManageStudents(); loadTeacherReport(); }, 1000);
     }
   </script>
 </body>

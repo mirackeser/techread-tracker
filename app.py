@@ -1,6 +1,8 @@
 import os
 import re
-from flask import Flask, request, jsonify, session, send_from_directory
+import csv
+import io
+from flask import Flask, request, jsonify, session, send_from_directory, Response
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 from database import init_db, get_connection, _fetchone, _fetchall, _exec, commit, close
@@ -601,6 +603,244 @@ def _update_daily_summary(conn, student_id, target_date):
             met_requirement = excluded.met_requirement,
             penalty_applied = excluded.penalty_applied
     """, (student_id, target_date, total, met, penalty))
+
+
+# ─── HOCA: ÖĞRENCİ YÖNETİMİ ─────────────────────────────────────────────────
+
+@app.route("/api/teacher/delete-student", methods=["POST"])
+def delete_student():
+    err = _require_teacher()
+    if err:
+        return err
+
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"error": "Geçersiz istek"}), 400
+
+    student_id = data.get("student_id")
+    if not student_id:
+        return jsonify({"error": "Öğrenci ID gerekli"}), 400
+
+    conn = get_connection()
+
+    user = _fetchone(conn, "SELECT role FROM users WHERE id = ?", (student_id,))
+    if not user:
+        close(conn)
+        return jsonify({"error": "Öğrenci bulunamadı"}), 404
+    if user["role"] == "teacher":
+        close(conn)
+        return jsonify({"error": "Hoca hesabı silinemez"}), 403
+
+    _exec(conn, "DELETE FROM news_entries WHERE student_id = ?", (student_id,))
+    _exec(conn, "DELETE FROM reading_sessions WHERE student_id = ?", (student_id,))
+    _exec(conn, "DELETE FROM daily_summaries WHERE student_id = ?", (student_id,))
+    _exec(conn, "DELETE FROM active_sessions WHERE student_id = ?", (student_id,))
+    _exec(conn, "DELETE FROM users WHERE id = ?", (student_id,))
+    commit(conn)
+    close(conn)
+
+    return jsonify({"message": "Öğrenci silindi"})
+
+
+@app.route("/api/teacher/reset-password", methods=["POST"])
+def reset_password():
+    err = _require_teacher()
+    if err:
+        return err
+
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"error": "Geçersiz istek"}), 400
+
+    student_id = data.get("student_id")
+    new_password = (data.get("new_password") or "").strip()
+
+    if not student_id:
+        return jsonify({"error": "Öğrenci ID gerekli"}), 400
+
+    new_password, err = _validate_password(new_password)
+    if err:
+        return jsonify({"error": err}), 400
+
+    conn = get_connection()
+    user = _fetchone(conn, "SELECT id FROM users WHERE id = ? AND role = 'student'", (student_id,))
+    if not user:
+        close(conn)
+        return jsonify({"error": "Öğrenci bulunamadı"}), 404
+
+    hashed = generate_password_hash(new_password, method="pbkdf2:sha256", salt_length=16)
+    _exec(conn, "UPDATE users SET password_hash = ? WHERE id = ?", (hashed, student_id))
+    commit(conn)
+    close(conn)
+
+    return jsonify({"message": "Şifre sıfırlandı"})
+
+
+@app.route("/api/teacher/update-score", methods=["POST"])
+def update_score():
+    err = _require_teacher()
+    if err:
+        return err
+
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"error": "Geçersiz istek"}), 400
+
+    student_id = data.get("student_id")
+    try:
+        new_score = float(data.get("base_score"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "Geçerli bir puan girin"}), 400
+
+    if new_score < 0 or new_score > 200:
+        return jsonify({"error": "Puan 0-200 arasında olmalı"}), 400
+
+    conn = get_connection()
+    user = _fetchone(conn, "SELECT id FROM users WHERE id = ? AND role = 'student'", (student_id,))
+    if not user:
+        close(conn)
+        return jsonify({"error": "Öğrenci bulunamadı"}), 404
+
+    _exec(conn, "UPDATE users SET base_score = ? WHERE id = ?", (new_score, student_id))
+    commit(conn)
+    close(conn)
+
+    return jsonify({"message": f"Puan {new_score} olarak güncellendi"})
+
+
+# ─── CSV DIŞA AKTARMA (HOCA) ─────────────────────────────────────────────────
+
+@app.route("/api/teacher/export-csv", methods=["GET"])
+def export_csv():
+    err = _require_teacher()
+    if err:
+        return err
+
+    report_type = request.args.get("type", "leaderboard")
+    conn = get_connection()
+
+    output = io.StringIO()
+    output.write('\ufeff')  # BOM for Excel UTF-8
+    writer = csv.writer(output)
+
+    if report_type == "daily":
+        raw_date = request.args.get("date", str(_today()))
+        target_date, err = _validate_date(raw_date)
+        if err:
+            close(conn)
+            return jsonify({"error": err}), 400
+
+        writer.writerow(["#", "Öğrenci No", "Ad Soyad", "Okuma (dk)", "Hedef", "Ceza", "Haber Sayısı", "Toplam Puan"])
+
+        rows = _fetchall(conn, """
+            SELECT u.name, u.student_no,
+                COALESCE(ds.total_minutes, 0) AS total_minutes,
+                COALESCE(ds.met_requirement, 0) AS met_requirement,
+                COALESCE(ds.penalty_applied, 0) AS penalty_applied,
+                (u.base_score - COALESCE((SELECT SUM(penalty_applied) FROM daily_summaries WHERE student_id = u.id), 0)) AS final_score,
+                COALESCE((SELECT COUNT(*) FROM news_entries WHERE student_id = u.id AND date = ?), 0) AS news_count
+            FROM users u
+            LEFT JOIN daily_summaries ds ON u.id = ds.student_id AND ds.date = ?
+            WHERE u.role = 'student' ORDER BY final_score DESC
+        """, (target_date, target_date))
+
+        for i, r in enumerate(rows, 1):
+            writer.writerow([i, r["student_no"], r["name"], round(r["total_minutes"], 1),
+                "TAMAM" if r["met_requirement"] else "EKSİK", r["penalty_applied"],
+                r["news_count"], round(r["final_score"], 1)])
+
+        filename = f"gunluk_rapor_{target_date}.csv"
+
+    elif report_type == "weekly":
+        raw_date = request.args.get("date", str(_today()))
+        target_date, _ = _validate_date(raw_date)
+        d = datetime.strptime(target_date, "%Y-%m-%d").date()
+        week_start = d - timedelta(days=d.weekday())
+        week_end = week_start + timedelta(days=6)
+
+        writer.writerow(["#", "Öğrenci No", "Ad Soyad", "Haftalık Süre (dk)", "Hedefe Ulaşan Gün", "Haftalık Ceza", "Haber Sayısı", "Toplam Puan"])
+
+        rows = _fetchall(conn, """
+            SELECT u.name, u.student_no,
+                COALESCE((SELECT SUM(ds.total_minutes) FROM daily_summaries ds WHERE ds.student_id = u.id AND ds.date BETWEEN ? AND ?), 0) AS week_min,
+                COALESCE((SELECT COUNT(*) FROM daily_summaries ds WHERE ds.student_id = u.id AND ds.date BETWEEN ? AND ? AND ds.met_requirement = 1), 0) AS days_met,
+                COALESCE((SELECT SUM(ds.penalty_applied) FROM daily_summaries ds WHERE ds.student_id = u.id AND ds.date BETWEEN ? AND ?), 0) AS week_penalty,
+                COALESCE((SELECT COUNT(*) FROM news_entries ne WHERE ne.student_id = u.id AND ne.date BETWEEN ? AND ?), 0) AS week_news,
+                (u.base_score - COALESCE((SELECT SUM(penalty_applied) FROM daily_summaries WHERE student_id = u.id), 0)) AS final_score
+            FROM users u WHERE u.role = 'student' ORDER BY final_score DESC
+        """, (str(week_start), str(week_end), str(week_start), str(week_end),
+              str(week_start), str(week_end), str(week_start), str(week_end)))
+
+        for i, r in enumerate(rows, 1):
+            writer.writerow([i, r["student_no"], r["name"], round(r["week_min"], 1),
+                f"{r['days_met']}/7", r["week_penalty"], r["week_news"], round(r["final_score"], 1)])
+
+        filename = f"haftalik_rapor_{week_start}_{week_end}.csv"
+
+    else:  # leaderboard
+        writer.writerow(["#", "Öğrenci No", "Ad Soyad", "Toplam Okuma (dk)", "Hedefe Ulaşan Gün", "Toplam Gün", "Toplam Haber", "Toplam Ceza", "Toplam Puan"])
+
+        rows = _fetchall(conn, """
+            SELECT u.name, u.student_no,
+                COALESCE((SELECT SUM(ds.total_minutes) FROM daily_summaries ds WHERE ds.student_id = u.id), 0) AS all_min,
+                COALESCE((SELECT COUNT(*) FROM daily_summaries ds WHERE ds.student_id = u.id AND ds.met_requirement = 1), 0) AS days_met,
+                COALESCE((SELECT COUNT(*) FROM daily_summaries ds WHERE ds.student_id = u.id), 0) AS days_tracked,
+                COALESCE((SELECT COUNT(*) FROM news_entries ne WHERE ne.student_id = u.id), 0) AS news_count,
+                COALESCE((SELECT SUM(ds.penalty_applied) FROM daily_summaries ds WHERE ds.student_id = u.id), 0) AS total_penalty,
+                (u.base_score - COALESCE((SELECT SUM(penalty_applied) FROM daily_summaries WHERE student_id = u.id), 0)) AS final_score
+            FROM users u WHERE u.role = 'student' ORDER BY final_score DESC
+        """)
+
+        for i, r in enumerate(rows, 1):
+            writer.writerow([i, r["student_no"], r["name"], round(r["all_min"], 1),
+                r["days_met"], r["days_tracked"], r["news_count"], r["total_penalty"], round(r["final_score"], 1)])
+
+        filename = "toplam_puan_siralaması.csv"
+
+    close(conn)
+
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+# ─── ÖĞRENCİ ŞİFRE DEĞİŞTİRME ──────────────────────────────────────────────
+
+@app.route("/api/change-password", methods=["POST"])
+def change_password():
+    user_id, err = _require_login()
+    if err:
+        return err
+
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"error": "Geçersiz istek"}), 400
+
+    old_password = (data.get("old_password") or "").strip()
+    new_password = (data.get("new_password") or "").strip()
+
+    if not old_password:
+        return jsonify({"error": "Mevcut şifre gerekli"}), 400
+
+    new_password, err = _validate_password(new_password)
+    if err:
+        return jsonify({"error": err}), 400
+
+    conn = get_connection()
+    user = _fetchone(conn, "SELECT password_hash FROM users WHERE id = ?", (user_id,))
+
+    if not check_password_hash(user["password_hash"], old_password):
+        close(conn)
+        return jsonify({"error": "Mevcut şifre hatalı"}), 401
+
+    hashed = generate_password_hash(new_password, method="pbkdf2:sha256", salt_length=16)
+    _exec(conn, "UPDATE users SET password_hash = ? WHERE id = ?", (hashed, user_id))
+    commit(conn)
+    close(conn)
+
+    return jsonify({"message": "Şifre başarıyla değiştirildi"})
 
 
 # ─── STATIC DOSYALAR ──────────────────────────────────────────────────────────
