@@ -1,0 +1,1708 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TechRead Tracker</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --surface2: #1a1a24;
+      --border: #2a2a3a;
+      --accent: #00e5ff;
+      --accent2: #ff3d71;
+      --accent3: #a259ff;
+      --text: #e8e8f0;
+      --muted: #6b6b80;
+      --green: #00e096;
+      --yellow: #ffb800;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* NOISE OVERLAY */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 1000;
+      opacity: 0.4;
+    }
+
+    /* GLOW ORBS */
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.12;
+    }
+
+    .orb-1 {
+      width: 500px;
+      height: 500px;
+      background: var(--accent3);
+      top: -200px;
+      right: -100px;
+    }
+
+    .orb-2 {
+      width: 400px;
+      height: 400px;
+      background: var(--accent);
+      bottom: -150px;
+      left: -100px;
+    }
+
+    /* ────── LAYOUTS ────── */
+    #app {
+      position: relative;
+      z-index: 10;
+    }
+
+    /* ────── LOGIN PAGE ────── */
+    #login-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .login-box {
+      width: 100%;
+      max-width: 440px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 3rem;
+      position: relative;
+      overflow: hidden;
+      animation: slideUp 0.5s ease;
+    }
+
+    .login-box::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), var(--accent3), transparent);
+    }
+
+    .logo {
+      font-family: 'Space Mono', monospace;
+      font-size: 1.1rem;
+      color: var(--accent);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+
+    .logo-sub {
+      font-size: 0.8rem;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      margin-bottom: 2.5rem;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+      background: var(--bg);
+      border-radius: 10px;
+      padding: 4px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 0.6rem;
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      border-radius: 7px;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      background: var(--surface2);
+      color: var(--text);
+    }
+
+    .form-group {
+      margin-bottom: 1.2rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    input:focus,
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0, 229, 255, 0.1);
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 0.9rem;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 0.5rem;
+      letter-spacing: 0.05em;
+    }
+
+    .btn-primary:hover {
+      background: #33eeff;
+      transform: translateY(-1px);
+      box-shadow: 0 8px 20px rgba(0, 229, 255, 0.25);
+    }
+
+    .error-msg {
+      color: var(--accent2);
+      font-size: 0.82rem;
+      margin-top: 0.8rem;
+      text-align: center;
+      min-height: 1.2em;
+    }
+
+    .success-msg {
+      color: var(--green);
+      font-size: 0.82rem;
+      margin-top: 0.8rem;
+      text-align: center;
+      min-height: 1.2em;
+    }
+
+    /* ────── MAIN APP ────── */
+    #main-app {
+      display: none;
+      min-height: 100vh;
+    }
+
+    /* TOPBAR */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 2rem;
+      border-bottom: 1px solid var(--border);
+      background: rgba(10, 10, 15, 0.8);
+      backdrop-filter: blur(20px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .topbar-logo {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.9rem;
+      color: var(--accent);
+      letter-spacing: 0.15em;
+    }
+
+    .topbar-user {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .user-badge {
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    .user-badge span {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .btn-sm {
+      padding: 0.4rem 1rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-sm:hover {
+      color: var(--text);
+      border-color: var(--muted);
+    }
+
+    /* CONTENT AREA */
+    .content {
+      padding: 2rem;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    /* ────── STUDENT PANEL ────── */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 700px) {
+
+      .grid-2,
+      .grid-3 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+
+    .card:hover {
+      border-color: #3a3a50;
+    }
+
+    .card-title {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--muted);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 0.8rem;
+    }
+
+    .stat-big {
+      font-family: 'Space Mono', monospace;
+      font-size: 2.5rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .stat-unit {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-top: 0.3rem;
+    }
+
+    .stat-green {
+      color: var(--green);
+    }
+
+    .stat-red {
+      color: var(--accent2);
+    }
+
+    .stat-yellow {
+      color: var(--yellow);
+    }
+
+    .stat-blue {
+      color: var(--accent);
+    }
+
+    /* FORM CARDS */
+    .form-card {
+      background: linear-gradient(135deg, var(--surface), var(--surface2));
+      border-color: var(--border);
+    }
+
+    .inline-form {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .inline-form .form-group {
+      margin-bottom: 0;
+      flex: 1;
+      min-width: 120px;
+    }
+
+    .btn-action {
+      padding: 0.85rem 2rem;
+      border: none;
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+
+    .btn-green {
+      background: var(--green);
+      color: #000;
+    }
+
+    .btn-green:hover {
+      background: #33ffb8;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 224, 150, 0.3);
+    }
+
+    .btn-purple {
+      background: var(--accent3);
+      color: #fff;
+    }
+
+    .btn-purple:hover {
+      background: #b87aff;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(162, 89, 255, 0.3);
+    }
+
+    .form-feedback {
+      font-size: 0.82rem;
+      margin-top: 0.8rem;
+      min-height: 1.2em;
+    }
+
+    /* TODAY STATUS */
+    .today-card {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .timer-progress {
+      height: 4px;
+      background: var(--bg);
+      border-radius: 2px;
+      margin-bottom: 0.5rem;
+      overflow: hidden;
+    }
+
+    .timer-progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent3));
+      border-radius: 2px;
+      transition: width 0.5s ease;
+      box-shadow: 0 0 10px var(--accent);
+    }
+
+    /* NEWS LIST */
+    .news-item {
+      padding: 1rem 1.2rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 0.6rem;
+      transition: border-color 0.2s;
+    }
+
+    .news-item:hover {
+      border-color: #3a3a50;
+    }
+
+    .news-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-bottom: 0.4rem;
+      color: var(--text);
+    }
+
+    .news-summary {
+      font-size: 0.85rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .news-meta {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 0.5rem;
+      font-family: 'Space Mono', monospace;
+      letter-spacing: 0.05em;
+    }
+
+    /* HISTORY */
+    .section-title {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--muted);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+
+    .history-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.9rem 1.2rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 0.5rem;
+      transition: border-color 0.2s;
+    }
+
+    .history-row:hover {
+      border-color: #3a3a50;
+    }
+
+    .history-date {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.82rem;
+      color: var(--text);
+    }
+
+    .history-minutes {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.2rem 0.7rem;
+      border-radius: 20px;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-ok {
+      background: rgba(0, 224, 150, 0.15);
+      color: var(--green);
+    }
+
+    .badge-fail {
+      background: rgba(255, 61, 113, 0.15);
+      color: var(--accent2);
+    }
+
+    /* ────── TEACHER PANEL ────── */
+    .teacher-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .date-picker-group {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    .date-picker-group label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin: 0;
+    }
+
+    input[type="date"] {
+      width: auto;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.82rem;
+    }
+
+    input[type="number"] {
+      font-family: 'Space Mono', monospace;
+    }
+
+    .student-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .student-table th {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--muted);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      text-align: left;
+      padding: 0.8rem 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .student-table td {
+      padding: 1rem 1rem;
+      border-bottom: 1px solid rgba(42, 42, 58, 0.5);
+      font-size: 0.9rem;
+      transition: background 0.15s;
+    }
+
+    .student-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .rank-num {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .progress-bar-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    .mini-bar {
+      flex: 1;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+      max-width: 100px;
+    }
+
+    .mini-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      background: var(--accent);
+      transition: width 0.5s ease;
+    }
+
+    .mini-bar-fill.over {
+      background: var(--green);
+    }
+
+    .mini-bar-fill.under {
+      background: var(--accent2);
+    }
+
+    .score-cell {
+      font-family: 'Space Mono', monospace;
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    .penalty-cell {
+      color: var(--accent2);
+      font-size: 0.82rem;
+    }
+
+    .summary-chips {
+      display: flex;
+      gap: 0.8rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.8rem 1.2rem;
+      font-size: 0.82rem;
+    }
+
+    .chip strong {
+      font-family: 'Space Mono', monospace;
+      font-size: 1.2rem;
+      display: block;
+      margin-bottom: 0.2rem;
+    }
+
+    .chip .chip-label {
+      color: var(--muted);
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+    }
+
+    /* NEWS COUNT BADGE */
+    .news-count-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.82rem;
+      color: var(--accent3);
+    }
+
+    /* MODAL */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
+      z-index: 500;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2rem;
+      max-width: 600px;
+      width: 100%;
+      max-height: 80vh;
+      overflow-y: auto;
+      position: relative;
+    }
+
+    .modal-box::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent3), var(--accent), transparent);
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 1.5rem;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    .modal-close:hover {
+      color: var(--text);
+    }
+
+    .modal-title {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--accent3);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 1.5rem;
+    }
+
+    /* ────── ANIMATIONS ────── */
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .fade-in {
+      animation: slideUp 0.4s ease forwards;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* ────── TEACHER TABS ────── */
+    .teacher-tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      background: var(--bg);
+      border-radius: 12px;
+      padding: 5px;
+      border: 1px solid var(--border);
+    }
+
+    .teacher-tab-btn {
+      flex: 1;
+      padding: 0.7rem 1rem;
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: 9px;
+      transition: all 0.25s;
+      letter-spacing: 0.03em;
+      position: relative;
+    }
+
+    .teacher-tab-btn:hover {
+      color: var(--text);
+    }
+
+    .teacher-tab-btn.active {
+      background: linear-gradient(135deg, var(--surface2), var(--surface));
+      color: var(--accent);
+      box-shadow: 0 2px 10px rgba(0, 229, 255, 0.1);
+    }
+
+    .teacher-tab-btn .tab-icon {
+      margin-right: 0.4rem;
+    }
+
+    /* WEEKLY STATS (Student) */
+    .week-stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 700px) {
+      .week-stats-row {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .week-card {
+      background: linear-gradient(135deg, var(--surface), var(--surface2));
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.2rem;
+      text-align: center;
+    }
+
+    .week-card .wc-value {
+      font-family: 'Space Mono', monospace;
+      font-size: 1.8rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .week-card .wc-label {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 0.4rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    /* LEADERBOARD MEDAL */
+    .medal {
+      font-size: 1.2rem;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <div id="app">
+
+    <!-- ════ LOGIN PAGE ════ -->
+    <div id="login-page">
+      <div class="login-box">
+        <div class="logo">⬡ TechRead</div>
+        <div class="logo-sub">Teknoloji Haber Takip Sistemi</div>
+
+        <div class="tabs">
+          <button class="tab-btn active" onclick="switchTab('login')">Giriş Yap</button>
+          <button class="tab-btn" onclick="switchTab('register')">Kayıt Ol</button>
+        </div>
+
+        <!-- Login Form -->
+        <div id="form-login">
+          <div class="form-group">
+            <label>Öğrenci No / Kullanıcı Adı</label>
+            <input type="text" id="login-no" placeholder="20210001" />
+          </div>
+          <div class="form-group">
+            <label>Şifre</label>
+            <input type="password" id="login-pass" placeholder="••••••••"
+              onkeydown="if(event.key==='Enter') doLogin()" />
+          </div>
+          <button class="btn-primary" onclick="doLogin()">Giriş Yap →</button>
+          <div class="error-msg" id="login-error"></div>
+        </div>
+
+        <!-- Register Form -->
+        <div id="form-register" class="hidden">
+          <div class="form-group">
+            <label>Ad Soyad</label>
+            <input type="text" id="reg-name" placeholder="Ali Veli" />
+          </div>
+          <div class="form-group">
+            <label>Öğrenci No</label>
+            <input type="text" id="reg-no" placeholder="20210001" />
+          </div>
+          <div class="form-group">
+            <label>Şifre</label>
+            <input type="password" id="reg-pass" placeholder="En az 6 karakter" />
+          </div>
+          <button class="btn-primary" onclick="doRegister()">Kayıt Ol →</button>
+          <div class="error-msg" id="reg-error"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════ MAIN APP ════ -->
+    <div id="main-app">
+      <div class="topbar">
+        <div class="topbar-logo">⬡ TechRead</div>
+        <div class="topbar-user">
+          <div class="user-badge">Merhaba, <span id="topbar-name"></span></div>
+          <button class="btn-sm" onclick="doLogout()">Çıkış</button>
+        </div>
+      </div>
+
+      <div class="content">
+
+        <!-- ─── ÖĞRENCİ PANELİ ─── -->
+        <div id="student-panel" class="hidden">
+
+          <!-- Stats Row -->
+          <div class="grid-3">
+            <div class="card">
+              <div class="card-title">Güncel Puan</div>
+              <div class="stat-big stat-blue" id="s-score">—</div>
+              <div class="stat-unit">/ 100 puan</div>
+            </div>
+            <div class="card">
+              <div class="card-title">Bugün Okunan</div>
+              <div class="stat-big" id="s-today-min">0</div>
+              <div class="stat-unit">dakika (hedef: 120)</div>
+            </div>
+            <div class="card">
+              <div class="card-title">Toplam Ceza</div>
+              <div class="stat-big stat-red" id="s-penalty">0</div>
+              <div class="stat-unit">puan kesildi</div>
+            </div>
+          </div>
+
+          <!-- Haftalık İstatistikler -->
+          <div style="margin-bottom:0.5rem;">
+            <div class="section-title">📅 Bu Hafta</div>
+          </div>
+          <div class="week-stats-row">
+            <div class="week-card">
+              <div class="wc-value stat-blue" id="sw-minutes">0</div>
+              <div class="wc-label">Toplam Dakika</div>
+            </div>
+            <div class="week-card">
+              <div class="wc-value stat-green" id="sw-days">0/7</div>
+              <div class="wc-label">Gün Hedefe Ulaştı</div>
+            </div>
+            <div class="week-card">
+              <div class="wc-value stat-red" id="sw-penalty">0</div>
+              <div class="wc-label">Haftalık Ceza</div>
+            </div>
+            <div class="week-card">
+              <div class="wc-value stat-yellow" id="sw-news">0</div>
+              <div class="wc-label">Haber Girişi</div>
+            </div>
+          </div>
+
+          <!-- Okuma Kaydı + Bugünün Durumu -->
+          <div class="grid-2">
+            <div class="card form-card">
+              <div class="card-title">📖 Okuma Kaydı Ekle</div>
+              <div style="margin-bottom:1rem;">
+                <div class="form-group">
+                  <label>Okunan Süre (Dakika)</label>
+                  <input type="number" id="add-duration" placeholder="Ör: 45" min="1" max="600" />
+                </div>
+                <div class="form-group">
+                  <label>Tarih</label>
+                  <input type="date" id="add-date" />
+                </div>
+              </div>
+              <button class="btn-action btn-green" onclick="addReading()" style="width:100%;">✓ Kaydı Ekle</button>
+              <div class="form-feedback" id="reading-feedback"></div>
+            </div>
+
+            <!-- Today's status -->
+            <div class="card today-card">
+              <div>
+                <div class="card-title">Bugünün Durumu</div>
+                <div id="today-status-block" style="margin-top:1rem;">
+                  <div style="font-size:3rem;margin-bottom:0.5rem" id="today-emoji">⏳</div>
+                  <div id="today-status-text" style="font-size:0.95rem;color:var(--muted);">Henüz okuma yapılmadı</div>
+                </div>
+              </div>
+              <div style="margin-top:1.5rem;">
+                <div
+                  style="display:flex;justify-content:space-between;font-size:0.8rem;color:var(--muted);margin-bottom:0.5rem;">
+                  <span>İlerleme</span>
+                  <span id="today-pct">0%</span>
+                </div>
+                <div class="timer-progress">
+                  <div class="timer-progress-bar" id="today-bar" style="width:0%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Haber Girişi -->
+          <div class="card form-card" style="margin-bottom:1.5rem;">
+            <div class="card-title">📰 Haber Girişi</div>
+            <div class="form-group">
+              <label>Haber Başlığı</label>
+              <input type="text" id="news-title" placeholder="Ör: Yapay Zeka Alanında Yeni Gelişmeler" />
+            </div>
+            <div class="form-group">
+              <label>Kısa Özet</label>
+              <textarea id="news-summary" placeholder="Haberin kısa bir özetini yazın..."></textarea>
+            </div>
+            <div class="inline-form" style="align-items:flex-end;">
+              <div class="form-group">
+                <label>Tarih</label>
+                <input type="date" id="news-date" />
+              </div>
+              <button class="btn-action btn-purple" onclick="addNews()">📰 Haberi Kaydet</button>
+            </div>
+            <div class="form-feedback" id="news-feedback"></div>
+          </div>
+
+          <!-- Haber Geçmişi -->
+          <div class="card" style="margin-bottom:1.5rem;">
+            <div class="section-title">📋 Girilen Haberler</div>
+            <div id="news-list">
+              <div style="color:var(--muted);font-size:0.85rem;padding:1rem 0;">Henüz haber girilmedi.</div>
+            </div>
+          </div>
+
+          <!-- History -->
+          <div class="card">
+            <div class="section-title">Son 30 Gün Geçmişi</div>
+            <div id="history-list">
+              <div style="color:var(--muted);font-size:0.85rem;padding:1rem 0;">Henüz kayıt yok.</div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ─── HOCA PANELİ ─── -->
+        <div id="teacher-panel" class="hidden fade-in">
+
+          <div
+            style="font-family:'Space Mono',monospace;font-size:0.65rem;color:var(--muted);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:0.3rem;">
+            SINIF RAPORU</div>
+
+          <!-- SEKMELER -->
+          <div class="teacher-tabs">
+            <button class="teacher-tab-btn active" onclick="switchTeacherTab('daily')">
+              <span class="tab-icon">📋</span>Günlük Takip
+            </button>
+            <button class="teacher-tab-btn" onclick="switchTeacherTab('weekly')">
+              <span class="tab-icon">📅</span>Haftalık Takip
+            </button>
+            <button class="teacher-tab-btn" onclick="switchTeacherTab('leaderboard')">
+              <span class="tab-icon">🏆</span>Toplam Puan
+            </button>
+          </div>
+
+          <!-- ══ GÜNLÜK TAKİP ══ -->
+          <div id="tab-daily">
+            <div class="teacher-header">
+              <div>
+                <div style="font-size:1.4rem;font-weight:600;">Günlük Takip</div>
+              </div>
+              <div class="date-picker-group">
+                <label>Tarih</label>
+                <input type="date" id="report-date" onchange="loadTeacherReport()" />
+              </div>
+            </div>
+
+            <div class="summary-chips" id="summary-chips">
+              <div class="chip"><strong id="chip-total">—</strong>
+                <div class="chip-label">Toplam Öğrenci</div>
+              </div>
+              <div class="chip"><strong id="chip-ok" style="color:var(--green)">—</strong>
+                <div class="chip-label">Hedefe Ulaştı</div>
+              </div>
+              <div class="chip"><strong id="chip-fail" style="color:var(--accent2)">—</strong>
+                <div class="chip-label">Hedefe Ulaşamadı</div>
+              </div>
+              <div class="chip"><strong id="chip-avg" style="color:var(--accent)">—</strong>
+                <div class="chip-label">Ortalama Puan</div>
+              </div>
+            </div>
+
+            <div class="card" style="padding:0;overflow:hidden;">
+              <table class="student-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Öğrenci</th>
+                    <th>Bugün (dk)</th>
+                    <th>İlerleme</th>
+                    <th>Haberler</th>
+                    <th>Durum</th>
+                    <th>Toplam Puan</th>
+                  </tr>
+                </thead>
+                <tbody id="teacher-table-body">
+                  <tr>
+                    <td colspan="7" style="text-align:center;color:var(--muted);padding:2rem;">Yükleniyor...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- ══ HAFTALIK TAKİP ══ -->
+          <div id="tab-weekly" class="hidden">
+            <div class="teacher-header">
+              <div>
+                <div style="font-size:1.4rem;font-weight:600;">Haftalık Takip</div>
+                <div id="week-range-label" style="font-size:0.85rem;color:var(--muted);margin-top:0.3rem;"></div>
+              </div>
+              <div class="date-picker-group">
+                <label>Hafta Seç</label>
+                <input type="date" id="weekly-report-date" onchange="loadWeeklyReport()" />
+              </div>
+            </div>
+
+            <div class="summary-chips">
+              <div class="chip"><strong id="wchip-total">—</strong>
+                <div class="chip-label">Toplam Öğrenci</div>
+              </div>
+              <div class="chip"><strong id="wchip-avg-min" style="color:var(--accent)">—</strong>
+                <div class="chip-label">Ort. Haftalık Dakika</div>
+              </div>
+              <div class="chip"><strong id="wchip-avg-score" style="color:var(--green)">—</strong>
+                <div class="chip-label">Ortalama Puan</div>
+              </div>
+            </div>
+
+            <div class="card" style="padding:0;overflow:hidden;">
+              <table class="student-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Öğrenci</th>
+                    <th>Haftalık Süre</th>
+                    <th>Gün (Hedefe Ulaşan)</th>
+                    <th>Haberler</th>
+                    <th>Haftalık Ceza</th>
+                    <th>Toplam Puan</th>
+                  </tr>
+                </thead>
+                <tbody id="weekly-table-body">
+                  <tr>
+                    <td colspan="7" style="text-align:center;color:var(--muted);padding:2rem;">Yükleniyor...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- ══ TOPLAM PUAN SIRALAMASI ══ -->
+          <div id="tab-leaderboard" class="hidden">
+            <div class="teacher-header">
+              <div>
+                <div style="font-size:1.4rem;font-weight:600;">🏆 Toplam Puan Sıralaması</div>
+                <div style="font-size:0.85rem;color:var(--muted);margin-top:0.3rem;">Tüm zamanlar</div>
+              </div>
+            </div>
+
+            <div class="summary-chips">
+              <div class="chip"><strong id="lchip-total">—</strong>
+                <div class="chip-label">Toplam Öğrenci</div>
+              </div>
+              <div class="chip"><strong id="lchip-avg" style="color:var(--green)">—</strong>
+                <div class="chip-label">Ortalama Puan</div>
+              </div>
+              <div class="chip"><strong id="lchip-best" style="color:var(--accent)">—</strong>
+                <div class="chip-label">En Yüksek Puan</div>
+              </div>
+            </div>
+
+            <div class="card" style="padding:0;overflow:hidden;">
+              <table class="student-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Öğrenci</th>
+                    <th>Toplam Okuma</th>
+                    <th>Hedefe Ulaşan Gün</th>
+                    <th>Toplam Haber</th>
+                    <th>Toplam Ceza</th>
+                    <th>Toplam Puan</th>
+                  </tr>
+                </thead>
+                <tbody id="leaderboard-table-body">
+                  <tr>
+                    <td colspan="7" style="text-align:center;color:var(--muted);padding:2rem;">Yükleniyor...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- News Modal -->
+  <div class="modal-overlay" id="news-modal">
+    <div class="modal-box">
+      <button class="modal-close" onclick="closeNewsModal()">✕</button>
+      <div class="modal-title" id="modal-student-name">Öğrenci Haberleri</div>
+      <div id="modal-news-list">
+        <div style="color:var(--muted);font-size:0.85rem;padding:1rem 0;">Yükleniyor...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentRole = null;
+    let todayMinutes = 0;
+
+    // ════ AUTH ════
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'register')));
+      document.getElementById('form-login').classList.toggle('hidden', tab !== 'login');
+      document.getElementById('form-register').classList.toggle('hidden', tab !== 'register');
+    }
+
+    async function doLogin() {
+      const student_no = document.getElementById('login-no').value.trim();
+      const password = document.getElementById('login-pass').value.trim();
+      const errEl = document.getElementById('login-error');
+
+      if (!student_no || !password) { errEl.textContent = 'Tüm alanları doldurun'; return; }
+
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_no, password })
+      });
+      const data = await res.json();
+
+      if (!res.ok) { errEl.textContent = data.error; return; }
+
+      currentRole = data.role;
+      document.getElementById('topbar-name').textContent = data.name;
+      showMainApp(data.role);
+    }
+
+    async function doRegister() {
+      const name = document.getElementById('reg-name').value.trim();
+      const student_no = document.getElementById('reg-no').value.trim();
+      const password = document.getElementById('reg-pass').value.trim();
+      const errEl = document.getElementById('reg-error');
+
+      if (!name || !student_no || !password) { errEl.textContent = 'Tüm alanları doldurun'; return; }
+      if (password.length < 6) { errEl.textContent = 'Şifre en az 6 karakter olmalı'; return; }
+
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, student_no, password })
+      });
+      const data = await res.json();
+
+      if (!res.ok) { errEl.textContent = data.error; return; }
+
+      errEl.style.color = 'var(--green)';
+      errEl.textContent = 'Kayıt başarılı! Giriş yapabilirsiniz.';
+      setTimeout(() => { errEl.style.color = ''; errEl.textContent = ''; switchTab('login'); }, 2000);
+    }
+
+    async function doLogout() {
+      await fetch('/api/logout', { method: 'POST' });
+      location.reload();
+    }
+
+    function showMainApp(role) {
+      document.getElementById('login-page').style.display = 'none';
+      document.getElementById('main-app').style.display = 'block';
+
+      const today = new Date().toISOString().split('T')[0];
+
+      if (role === 'teacher') {
+        document.getElementById('teacher-panel').classList.remove('hidden');
+        document.getElementById('report-date').value = today;
+        document.getElementById('weekly-report-date').value = today;
+        loadTeacherReport();
+      } else {
+        document.getElementById('student-panel').classList.remove('hidden');
+        document.getElementById('add-date').value = today;
+        document.getElementById('news-date').value = today;
+        loadStudentStats();
+        loadWeeklyStudentStats();
+        loadMyNews();
+      }
+    }
+
+    // Auto-login check
+    window.addEventListener('load', async () => {
+      const res = await fetch('/api/me');
+      if (res.ok) {
+        const data = await res.json();
+        currentRole = data.role;
+        document.getElementById('topbar-name').textContent = data.name;
+        showMainApp(data.role);
+      }
+    });
+
+    // ════ STUDENT ════
+
+    async function loadWeeklyStudentStats() {
+      const res = await fetch('/api/my-weekly-stats');
+      if (!res.ok) return;
+      const data = await res.json();
+
+      document.getElementById('sw-minutes').textContent = Math.round(data.week_total_minutes);
+      document.getElementById('sw-days').textContent = data.days_met + '/7';
+      document.getElementById('sw-penalty').textContent = data.week_penalty;
+      document.getElementById('sw-news').textContent = data.week_news_count;
+    }
+
+
+    async function loadStudentStats() {
+      const res = await fetch('/api/my-stats');
+      if (!res.ok) return;
+      const data = await res.json();
+
+      document.getElementById('s-score').textContent = data.final_score.toFixed(1);
+      document.getElementById('s-penalty').textContent = data.total_penalty;
+
+      const today = data.today;
+      todayMinutes = today ? today.total_minutes : 0;
+      document.getElementById('s-today-min').textContent = Math.round(todayMinutes);
+
+      const pct = Math.min(100, (todayMinutes / 120) * 100);
+      document.getElementById('today-bar').style.width = pct + '%';
+      document.getElementById('today-pct').textContent = Math.round(pct) + '%';
+
+      if (today && today.met_requirement) {
+        document.getElementById('today-emoji').textContent = '✅';
+        document.getElementById('today-status-text').textContent = 'Günlük hedefe ulaştın!';
+        document.getElementById('today-bar').style.background = 'var(--green)';
+      } else if (todayMinutes > 0) {
+        const remaining = 120 - todayMinutes;
+        document.getElementById('today-emoji').textContent = '🔄';
+        document.getElementById('today-status-text').textContent = `${Math.ceil(remaining)} dakika daha gerekiyor`;
+      } else {
+        document.getElementById('today-emoji').textContent = '⏳';
+        document.getElementById('today-status-text').textContent = 'Henüz okuma yapılmadı';
+      }
+
+      // History
+      const histEl = document.getElementById('history-list');
+      if (data.history.length === 0) {
+        histEl.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;padding:1rem 0;">Henüz kayıt yok.</div>';
+        return;
+      }
+      histEl.innerHTML = data.history.map(h => `
+      <div class="history-row">
+        <div class="history-date">${h.date}</div>
+        <div class="history-minutes">${Math.round(h.total_minutes)} dk</div>
+        <div class="${h.met_requirement ? 'badge badge-ok' : 'badge badge-fail'}">
+          ${h.met_requirement ? '✓ TAMAM' : `−${h.penalty_applied} puan`}
+        </div>
+      </div>
+    `).join('');
+    }
+
+    // ════ OKUMA KAYDI EKLE ════
+
+    async function addReading() {
+      const duration = document.getElementById('add-duration').value;
+      const dateVal = document.getElementById('add-date').value;
+      const fb = document.getElementById('reading-feedback');
+
+      if (!duration || parseFloat(duration) <= 0) {
+        fb.style.color = 'var(--accent2)';
+        fb.textContent = 'Geçerli bir süre girin';
+        return;
+      }
+
+      const res = await fetch('/api/sessions/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ duration_minutes: parseFloat(duration), date: dateVal })
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        fb.style.color = 'var(--accent2)';
+        fb.textContent = data.error;
+        return;
+      }
+
+      fb.style.color = 'var(--green)';
+      fb.textContent = `✓ ${duration} dakika kaydedildi!`;
+      document.getElementById('add-duration').value = '';
+      setTimeout(() => { fb.textContent = ''; }, 3000);
+      loadStudentStats();
+      loadWeeklyStudentStats();
+    }
+
+    // ════ HABER GİRİŞİ ════
+
+    async function addNews() {
+      const title = document.getElementById('news-title').value.trim();
+      const summary = document.getElementById('news-summary').value.trim();
+      const dateVal = document.getElementById('news-date').value;
+      const fb = document.getElementById('news-feedback');
+
+      if (!title) {
+        fb.style.color = 'var(--accent2)';
+        fb.textContent = 'Haber başlığı zorunlu';
+        return;
+      }
+
+      const res = await fetch('/api/news/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, summary, date: dateVal })
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        fb.style.color = 'var(--accent2)';
+        fb.textContent = data.error;
+        return;
+      }
+
+      fb.style.color = 'var(--green)';
+      fb.textContent = '✓ Haber kaydedildi!';
+      document.getElementById('news-title').value = '';
+      document.getElementById('news-summary').value = '';
+      setTimeout(() => { fb.textContent = ''; }, 3000);
+      loadMyNews();
+    }
+
+    async function loadMyNews() {
+      const res = await fetch('/api/news/my');
+      if (!res.ok) return;
+      const news = await res.json();
+
+      const el = document.getElementById('news-list');
+      if (news.length === 0) {
+        el.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;padding:1rem 0;">Henüz haber girilmedi.</div>';
+        return;
+      }
+
+      el.innerHTML = news.map(n => `
+      <div class="news-item">
+        <div class="news-title">${escapeHtml(n.title)}</div>
+        ${n.summary ? `<div class="news-summary">${escapeHtml(n.summary)}</div>` : ''}
+        <div class="news-meta">${n.date}</div>
+      </div>
+    `).join('');
+    }
+
+    // ════ TEACHER ════
+
+    let currentTeacherTab = 'daily';
+
+    function switchTeacherTab(tab) {
+      currentTeacherTab = tab;
+      document.querySelectorAll('.teacher-tab-btn').forEach((btn, i) => {
+        const tabs = ['daily', 'weekly', 'leaderboard'];
+        btn.classList.toggle('active', tabs[i] === tab);
+      });
+      document.getElementById('tab-daily').classList.toggle('hidden', tab !== 'daily');
+      document.getElementById('tab-weekly').classList.toggle('hidden', tab !== 'weekly');
+      document.getElementById('tab-leaderboard').classList.toggle('hidden', tab !== 'leaderboard');
+
+      if (tab === 'weekly') loadWeeklyReport();
+      if (tab === 'leaderboard') loadLeaderboard();
+    }
+
+    async function loadTeacherReport() {
+      const d = document.getElementById('report-date').value;
+      const res = await fetch(`/api/teacher/report?date=${d}`);
+      const data = await res.json();
+      const students = data.students;
+
+      // Summary chips
+      const total = students.length;
+      const ok = students.filter(s => s.met_requirement).length;
+      const fail = total - ok;
+      const avg = total > 0 ? (students.reduce((a, s) => a + s.final_score, 0) / total).toFixed(1) : '—';
+
+      document.getElementById('chip-total').textContent = total;
+      document.getElementById('chip-ok').textContent = ok;
+      document.getElementById('chip-fail').textContent = fail;
+      document.getElementById('chip-avg').textContent = avg;
+
+      // Table
+      const tbody = document.getElementById('teacher-table-body');
+      if (students.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem;">Henüz öğrenci yok.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = students.map((s, i) => {
+        const pct = Math.min(100, (s.total_minutes / 120) * 100);
+        const fillClass = pct >= 100 ? 'over' : pct > 50 ? '' : 'under';
+        return `
+        <tr>
+          <td class="rank-num">${i + 1}</td>
+          <td>
+            <div style="font-weight:600">${s.name}</div>
+            <div style="font-size:0.75rem;color:var(--muted);font-family:'Space Mono',monospace">${s.student_no}</div>
+          </td>
+          <td style="font-family:'Space Mono',monospace">${Math.round(s.total_minutes)}</td>
+          <td>
+            <div class="progress-bar-wrap">
+              <div class="mini-bar">
+                <div class="mini-bar-fill ${fillClass}" style="width:${pct}%"></div>
+              </div>
+              <span style="font-size:0.78rem;color:var(--muted);font-family:'Space Mono',monospace">${Math.round(pct)}%</span>
+            </div>
+          </td>
+          <td>
+            <span class="news-count-badge" style="cursor:pointer" onclick="showStudentNews(${s.id}, '${escapeHtml(s.name)}', '${d}')">
+              📰 ${s.news_count} haber
+            </span>
+          </td>
+          <td>
+            <span class="badge ${s.met_requirement ? 'badge-ok' : 'badge-fail'}">
+              ${s.met_requirement ? '✓ TAMAM' : '✗ EKSİK'}
+            </span>
+          </td>
+          <td class="score-cell ${s.final_score >= 80 ? 'stat-green' : s.final_score >= 60 ? 'stat-yellow' : 'stat-red'}">
+            ${s.final_score.toFixed(1)}
+            ${s.penalty_applied > 0 ? `<div class="penalty-cell">−${s.penalty_applied} bugün</div>` : ''}
+          </td>
+        </tr>
+      `;
+      }).join('');
+    }
+
+    // ════ NEWS MODAL (TEACHER) ════
+
+    // ════ WEEKLY REPORT (TEACHER) ════
+
+    async function loadWeeklyReport() {
+      const d = document.getElementById('weekly-report-date').value;
+      const res = await fetch(`/api/teacher/weekly-report?date=${d}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const students = data.students;
+
+      document.getElementById('week-range-label').textContent = `${data.week_start} → ${data.week_end}`;
+
+      const total = students.length;
+      const avgMin = total > 0 ? Math.round(students.reduce((a, s) => a + s.week_total_minutes, 0) / total) : 0;
+      const avgScore = total > 0 ? (students.reduce((a, s) => a + s.final_score, 0) / total).toFixed(1) : '—';
+
+      document.getElementById('wchip-total').textContent = total;
+      document.getElementById('wchip-avg-min').textContent = avgMin + ' dk';
+      document.getElementById('wchip-avg-score').textContent = avgScore;
+
+      const tbody = document.getElementById('weekly-table-body');
+      if (students.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem;">Henüz öğrenci yok.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = students.map((s, i) => {
+        const hours = Math.floor(s.week_total_minutes / 60);
+        const mins = Math.round(s.week_total_minutes % 60);
+        return `
+        <tr>
+          <td class="rank-num">${i + 1}</td>
+          <td>
+            <div style="font-weight:600">${escapeHtml(s.name)}</div>
+            <div style="font-size:0.75rem;color:var(--muted);font-family:'Space Mono',monospace">${s.student_no}</div>
+          </td>
+          <td style="font-family:'Space Mono',monospace">${hours}s ${mins}dk</td>
+          <td>
+            <span class="badge ${s.days_met >= 5 ? 'badge-ok' : s.days_met >= 3 ? '' : 'badge-fail'}" style="${s.days_met >= 3 && s.days_met < 5 ? 'background:rgba(255,184,0,0.15);color:var(--yellow);' : ''}">
+              ${s.days_met}/7 gün
+            </span>
+          </td>
+          <td>
+            <span class="news-count-badge">📰 ${s.week_news_count} haber</span>
+          </td>
+          <td class="penalty-cell" style="font-family:'Space Mono',monospace">${s.week_penalty > 0 ? '−' + s.week_penalty : '0'}</td>
+          <td class="score-cell ${s.final_score >= 80 ? 'stat-green' : s.final_score >= 60 ? 'stat-yellow' : 'stat-red'}">
+            ${s.final_score.toFixed(1)}
+          </td>
+        </tr>
+      `;
+      }).join('');
+    }
+
+    // ════ LEADERBOARD (TEACHER) ════
+
+    function getMedal(rank) {
+      if (rank === 1) return '🥇';
+      if (rank === 2) return '🥈';
+      if (rank === 3) return '🥉';
+      return rank;
+    }
+
+    async function loadLeaderboard() {
+      const res = await fetch('/api/teacher/leaderboard');
+      if (!res.ok) return;
+      const data = await res.json();
+      const students = data.students;
+
+      const total = students.length;
+      const avg = total > 0 ? (students.reduce((a, s) => a + s.final_score, 0) / total).toFixed(1) : '—';
+      const best = total > 0 ? students[0].final_score.toFixed(1) : '—';
+
+      document.getElementById('lchip-total').textContent = total;
+      document.getElementById('lchip-avg').textContent = avg;
+      document.getElementById('lchip-best').textContent = best;
+
+      const tbody = document.getElementById('leaderboard-table-body');
+      if (students.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem;">Henüz öğrenci yok.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = students.map((s, i) => {
+        const totalHours = Math.floor(s.all_total_minutes / 60);
+        const totalMins = Math.round(s.all_total_minutes % 60);
+        const rank = i + 1;
+        return `
+        <tr style="${rank <= 3 ? 'background:rgba(0,229,255,0.03);' : ''}">
+          <td class="rank-num"><span class="medal">${getMedal(rank)}</span></td>
+          <td>
+            <div style="font-weight:600">${escapeHtml(s.name)}</div>
+            <div style="font-size:0.75rem;color:var(--muted);font-family:'Space Mono',monospace">${s.student_no}</div>
+          </td>
+          <td style="font-family:'Space Mono',monospace">${totalHours}s ${totalMins}dk</td>
+          <td>
+            <span style="font-family:'Space Mono',monospace;color:var(--green)">${s.total_days_met}</span>
+            <span style="color:var(--muted)"> / ${s.total_days_tracked} gün</span>
+          </td>
+          <td>
+            <span class="news-count-badge">📰 ${s.total_news_count}</span>
+          </td>
+          <td class="penalty-cell" style="font-family:'Space Mono',monospace">${s.total_penalty > 0 ? '−' + s.total_penalty : '0'}</td>
+          <td class="score-cell ${s.final_score >= 80 ? 'stat-green' : s.final_score >= 60 ? 'stat-yellow' : 'stat-red'}" style="font-size:1.1rem;">
+            ${s.final_score.toFixed(1)}
+          </td>
+        </tr>
+      `;
+      }).join('');
+    }
+
+    async function showStudentNews(studentId, studentName, date) {
+      const modal = document.getElementById('news-modal');
+      const listEl = document.getElementById('modal-news-list');
+      document.getElementById('modal-student-name').textContent = `${studentName} — Haberler (${date})`;
+      listEl.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;padding:1rem 0;">Yükleniyor...</div>';
+      modal.classList.add('active');
+
+      const res = await fetch(`/api/teacher/student-news?student_id=${studentId}&date=${date}`);
+      const news = await res.json();
+
+      if (news.length === 0) {
+        listEl.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;padding:1rem 0;">Bu tarihte haber girişi yok.</div>';
+        return;
+      }
+
+      listEl.innerHTML = news.map(n => `
+      <div class="news-item">
+        <div class="news-title">${escapeHtml(n.title)}</div>
+        ${n.summary ? `<div class="news-summary">${escapeHtml(n.summary)}</div>` : ''}
+        <div class="news-meta">${n.created_at}</div>
+      </div>
+    `).join('');
+    }
+
+    function closeNewsModal() {
+      document.getElementById('news-modal').classList.remove('active');
+    }
+
+    // Close modal on outside click
+    document.getElementById('news-modal').addEventListener('click', function (e) {
+      if (e.target === this) closeNewsModal();
+    });
+
+    // ════ UTILS ════
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+
+</html>
